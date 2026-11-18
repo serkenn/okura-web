@@ -48,6 +48,7 @@ okura-web は okura-gov（`vendor/okura-gov`、サブモジュール）の外側
 | `okura_web/sheets.py` | Excel・CSV を AI に渡す表の文字にする（標準ライブラリだけ） |
 | `mcp_server.py` | MCP のサーバー（stdio → /api/v1/tools） |
 | `frontend/` | 画面（Vite + React + React Router + TypeScript）。`src/main.tsx`（起動と経路）・`src/Shell.tsx`（枠組み）・`src/views/`（画面）・`src/lib/`（通信 `api.ts`・読み取りのフック `useApi.ts`・共有の状態 `store.ts`・入力フォーム `forms.tsx`）・`src/ui/`（部品・ダイアログ）。ビルドの出力 `frontend/dist/` をサーバーが配る（git に入れない）。情報設計（もの・ナビ）は `docs/ia-model.md`（根拠：`docs/ia-methods.md`・`docs/ia-competitors.md`）。確定申告の世帯の表・1人の申告は `frontend/src/views/Tax.tsx` |
+| `Containerfile`・`compose.yaml`・`.dockerignore` | AlmaLinux 9 のコンテナで動かす（コミットした内容だけをイメージに入れる）。手順は `ops/container/README.md` |
 | `tests/` | ユニットテスト（架空の家庭） |
 
 ## テスト

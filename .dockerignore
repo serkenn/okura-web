@@ -1,0 +1,14 @@
+# コンテナのビルドに渡さないもの（podman・docker のどちらもこのファイルを読む）。
+# イメージに入るのはコミットした内容だけ（Containerfile がビルドの中で git clone する）なので、.git と vendor/okura-gov は渡す。
+
+# 家族のデータ（台帳・写真・結果・DB）は、ビルドの文脈にも入れない
+data/
+# 仮想環境・手前の認証の設定・作業用のファイル
+.work/
+logs/
+.live/
+# ビルドの中で作り直すもの
+node_modules/
+frontend/dist/
+**/__pycache__/
+**/*.pyc

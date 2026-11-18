@@ -49,6 +49,16 @@ http://127.0.0.1:8765/ を開くと、最初の設定（世帯・あなたのア
 - 家族の端末から LAN で使うとき：`serve.py --host 0.0.0.0 --allow-host 192.168.x.x:8765`。HTTP は暗号化されないので家の LAN の中だけで。
   外（クラウド）に置くなら暗号化が要る。**置き場所を決める前に相談する**（今はローカルだけ）。
 
+### コンテナで動かす（AlmaLinux 9）
+
+```
+git submodule update --init
+podman compose up -d --build                # docker compose でも同じ。http://127.0.0.1:8765/
+```
+
+`Containerfile`・`compose.yaml`。イメージに入るのはコミットした内容だけで、データは名前つきのボリュームに置く。
+開ける範囲・データ・AI の URL などは `ops/container/README.md`。
+
 ## 3. 家族の機微な情報（いちばん大事）
 
 | 決まり | 実装 |

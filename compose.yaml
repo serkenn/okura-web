@@ -1,0 +1,39 @@
+# okura-web を AlmaLinux のコンテナで動かす（podman compose・docker compose）。手順は ops/container/README.md。
+#
+#   git submodule update --init
+#   podman compose up -d --build        # http://127.0.0.1:8765/
+#
+# 既定では、このコンピューターの中（127.0.0.1）からだけ開ける。HTTP は暗号化されない。
+services:
+  okura-web:
+    build:
+      context: .
+      dockerfile: Containerfile
+    image: okura-web:local
+    # 左側の 127.0.0.1 を外すと LAN に出る。そのときは下の command の --allow-host も要る（README §2）。
+    ports:
+      - "127.0.0.1:8765:8765"
+    # serve.py に渡す引数。
+    #   LAN から使う：        ["--allow-host", "192.168.1.10:8765"]
+    #   手前の認証つきで公開： ["--public-host", "okura.example.com"]（下の proxy-auth.json も要る）
+    command: []
+    volumes:
+      # 家族のデータ（SQLite・台帳・写真・結果）。イメージには入らない。
+      - okura-web-data:/var/lib/okura-web
+      # 手前の認証の設定（--public-host を使うとき。README §14）。どちらか一方。
+      # - ./.work/proxy-auth.json:/opt/okura-web/.work/proxy-auth.json:ro,Z
+      # - ./.work/cf-access.json:/opt/okura-web/.work/cf-access.json:ro,Z
+    # 書き込めるのはデータのボリュームと /tmp だけ。
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_signal: SIGINT
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+volumes:
+  okura-web-data:
