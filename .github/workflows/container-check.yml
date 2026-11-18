@@ -1,0 +1,97 @@
+# fork での確かめ用（PR には入れない）：AlmaLinux のコンテナをビルドして動かす。
+name: container-check
+on:
+  push:
+    branches: [almalinux-container-ci]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  docker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          submodules: true
+      - name: build
+        run: docker compose build
+      - name: unit tests in the image
+        run: |
+          docker run --rm --network none --read-only --tmpfs /tmp --entrypoint /opt/okura-web/.work/venvs/web/bin/python okura-web:local \
+            -I -X utf8 -m unittest discover -s tests -t .
+      - name: okura-gov core tests against the vendored tree in the image
+        run: |
+          docker run --rm --network none --read-only --tmpfs /tmp -w /opt/okura-web/vendor/okura-gov --entrypoint /opt/okura-web/.work/venvs/core/bin/python okura-web:local \
+            -I -X utf8 -m pytest -q -p no:cacheprovider packages/core/tests 2>&1 | tail -15
+          docker run --rm --network none --read-only --tmpfs /tmp -w /opt/okura-web/vendor/okura-gov --entrypoint /opt/okura-web/.work/venvs/records/bin/python okura-web:local \
+            -I -X utf8 -m unittest discover -s packages/records/tests -t packages/records 2>&1 | tail -4
+      - name: image facts
+        run: |
+          docker run --rm --entrypoint /bin/sh okura-web:local -c 'cat /etc/almalinux-release; id; python3.11 --version; ls -la /opt/okura-web /opt/okura-web/frontend/dist | head -60; command -v uv node npm || echo "no uv/node/npm (ok)"'
+          docker image ls okura-web:local
+      - name: run
+        run: |
+          docker compose up -d
+          for i in $(seq 1 60); do
+            s=$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q okura-web)")
+            echo "health: $s"; [ "$s" = healthy ] && break; sleep 2
+          done
+          docker compose ps
+          docker compose logs
+          [ "$s" = healthy ]
+      - name: status and pages
+        run: |
+          curl -fsS http://127.0.0.1:8765/api/status | tee status.json; echo
+          python3 -I - <<'PY'
+          import json, subprocess
+          d = json.load(open("status.json"))
+          g = d["okura_gov"]
+          pinned = subprocess.run(["git", "ls-files", "--stage", "vendor/okura-gov"], capture_output=True, text=True).stdout.split()[1]
+          assert d["initialized"] is False, d
+          assert g["commit"] == pinned == g["pinned_commit"], (g, pinned)
+          assert g["matches_pin"] is True and g["locally_modified"] is False, g
+          print("version ok", g["short"])
+          PY
+          curl -fsS -o index.html -D - http://127.0.0.1:8765/ | head -20
+          grep -o '<script[^>]*>' index.html
+          asset=$(grep -o '/assets/[^"]*\.js' index.html | head -1); curl -fsS -o /dev/null -w "%{http_code} %{size_download} $asset\n" "http://127.0.0.1:8765$asset"
+          echo "--- wrong Host must be refused"
+          curl -s -o /dev/null -w "%{http_code}\n" -H 'Host: evil.example:8765' http://127.0.0.1:8765/api/status
+      - name: first setup, then engine subprocesses (core / records / auth venvs)
+        run: |
+          docker compose exec -T okura-web /bin/sh -c '
+            set -e
+            cd /tmp
+            for v in core records auth web; do /opt/okura-web/.work/venvs/$v/bin/python -I -X utf8 -c "import sys; print(sys.executable, sys.version.split()[0])"; done
+            /opt/okura-web/.work/venvs/core/bin/python -I -X utf8 -c "import okura_core, okura_ir, openfisca_core; print(\"core ok\")"
+            /opt/okura-web/.work/venvs/records/bin/python -I -X utf8 -c "import okura_records, beancount; print(\"records ok\", beancount.__version__)"
+            /opt/okura-web/.work/venvs/auth/bin/python -I -X utf8 -c "import webauthn, cbor2, cryptography; print(\"auth ok\", cryptography.__version__)"
+            touch /opt/okura-web/x 2>/dev/null && { echo "root fs is writable"; exit 1; } || echo "root fs read-only ok"
+            ls -la /var/lib/okura-web
+          '
+      - name: stop is graceful
+        run: |
+          t0=$(date +%s); docker compose stop; t1=$(date +%s); echo "stop took $((t1-t0))s"
+          docker compose ps -a
+          docker inspect -f 'exit={{.State.ExitCode}}' "$(docker compose ps -aq okura-web)"
+          [ $((t1-t0)) -lt 20 ]
+          docker compose up -d && sleep 8 && curl -fsS http://127.0.0.1:8765/api/status && docker compose down
+  podman:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          submodules: true
+      - run: podman --version
+      - name: build
+        run: podman build -t okura-web .
+      - name: run
+        run: |
+          podman volume create okura-web-data
+          podman run -d --name okura-web -p 127.0.0.1:8765:8765 -v okura-web-data:/var/lib/okura-web --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges okura-web
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8765/api/status && break; sleep 2; done; echo
+          podman logs okura-web
+          curl -fsS http://127.0.0.1:8765/api/status | grep -q '"matches_pin": *true'
+          podman stop okura-web
