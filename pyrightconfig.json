@@ -1,0 +1,8 @@
+{
+  "include": ["okura_web", "serve.py", "mcp_server.py", "tests"],
+  "exclude": ["vendor", ".work", "data", "okura_web/bridge"],
+  "extraPaths": ["."],
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": "warning"
+}

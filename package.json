@@ -1,0 +1,23 @@
+{
+  "name": "okura-web-ui",
+  "private": true,
+  "type": "module",
+  "description": "画面（Vite + React + React Router）。入れるときは必ず npm ci --ignore-scripts。版は固定（上げるときは安全性を確かめ直す）。",
+  "scripts": {
+    "dev": "vite --config frontend/vite.config.ts",
+    "build": "vite build --config frontend/vite.config.ts",
+    "check": "tsc -p frontend/tsconfig.json"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-router": "8.5.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.3.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.8"
+  }
+}

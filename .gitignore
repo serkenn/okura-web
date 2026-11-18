@@ -1,0 +1,11 @@
+# 家族のデータ（台帳・写真・結果・DB）は git に入れない
+data/
+# 仮想環境・作業用のファイル
+.work/
+__pycache__/
+*.pyc
+logs/
+.live/
+node_modules/
+# 画面のビルドの出力（npm run build で作る）
+frontend/dist/
