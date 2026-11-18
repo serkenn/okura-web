@@ -1,0 +1,39 @@
+# fork での確かめ用（PR には入れない）
+name: terraform-check
+on:
+  push:
+    branches: [cloudflare-terraform-ci]
+permissions:
+  contents: read
+jobs:
+  terraform:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - name: fmt / init / validate
+        working-directory: ops/cloudflare/terraform
+        run: |
+          tf() { docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -e TF_IN_AUTOMATION=1 -v "$PWD/../../..:/repo" -w /repo/ops/cloudflare/terraform docker.io/hashicorp/terraform:1.17.1 "$@"; }
+          tf version
+          tf fmt -check -diff -recursive
+          tf init -backend=false -input=false
+          tf validate
+          tf providers
+          cat .terraform.lock.hcl
+      - name: validate with org/teams and without mcp bypass
+        working-directory: ops/cloudflare/terraform
+        run: |
+          tf() { docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -e TF_IN_AUTOMATION=1 -e CLOUDFLARE_API_TOKEN=0000000000000000000000000000000000000000 -e TF_VAR_github_client_secret=x -v "$PWD/../../..:/repo" -w /repo/ops/cloudflare/terraform docker.io/hashicorp/terraform:1.17.1 "$@"; }
+          cp terraform.tfvars.example terraform.tfvars
+          # plan は API に届くところで止まる（偽のトークン）。そこまでに式・型の誤りがないことを見る
+          tf plan -input=false -refresh=false 2>&1 | tail -25 || true
+          printf 'r = [for e in ["b@x","a@x"] : { email = { email = e } }]\n' > /dev/null
+      - name: compose overlay
+        run: |
+          mkdir -p .work && printf 'OKURA_PUBLIC_HOST=okura.example.com\nTUNNEL_TOKEN=dummy\n' > .work/cloudflare.env && echo '{}' > .work/cf-access.json
+          docker compose --env-file .work/cloudflare.env -f compose.yaml -f compose.cloudflare.yaml config
+          echo "--- without env file must fail"
+          if docker compose -f compose.yaml -f compose.cloudflare.yaml config >/dev/null 2>err.txt; then echo "unexpected success"; exit 1; else cat err.txt; fi
+          docker pull -q docker.io/cloudflare/cloudflared:2026.10.7@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
+          docker run --rm docker.io/cloudflare/cloudflared:2026.10.7@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba version
