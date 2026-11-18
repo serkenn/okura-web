@@ -12,3 +12,8 @@ node_modules/
 frontend/dist/
 **/__pycache__/
 **/*.pyc
+# Terraform の状態（秘密が入る）とプロバイダー
+ops/cloudflare/terraform/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/terraform.tfvars

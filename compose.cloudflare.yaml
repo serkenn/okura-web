@@ -1,0 +1,29 @@
+# compose.yaml に重ねる：Cloudflare トンネル（cloudflared）で公開し、Cloudflare Access の JWT をアプリでも確かめる。
+# 値とファイルは Terraform が .work/ に書く（ops/cloudflare/terraform/README.md）。
+#
+#   podman compose --env-file .work/cloudflare.env -f compose.yaml -f compose.cloudflare.yaml up -d --build
+#
+# okura-web のポートは 127.0.0.1 のまま（外からはトンネルだけ）。cloudflared は外へつなぎに行くだけで、ポートを開けない。
+services:
+  okura-web:
+    # 公開のホスト名で来たリクエストは、Access の JWT を必ず確かめる（設定がなければ全部 403）
+    command: ["--public-host", "${OKURA_PUBLIC_HOST:?.work/cloudflare.env がない。terraform apply を先に}"]
+    volumes:
+      - ./.work/cf-access.json:/opt/okura-web/.work/cf-access.json:ro,Z
+
+  cloudflared:
+    # 版とダイジェストを固定（2026-10-30 公開の 2026.10.7）。上げるときは安全性を確かめ直す
+    image: docker.io/cloudflare/cloudflared:2026.10.7@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
+    # どのホスト名をどこへ流すかは Cloudflare 側の設定（Terraform）。ここではトークンだけを渡す
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: "${TUNNEL_TOKEN:?.work/cloudflare.env がない。terraform apply を先に}"
+    depends_on:
+      okura-web:
+        condition: service_healthy
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped

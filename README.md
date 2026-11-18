@@ -177,6 +177,8 @@ powershell -ExecutionPolicy Bypass -File ops\cloudflare\setup-access.ps1 -Hostna
 ```
 
   API トークンの権限：Account / Access: Apps and Policies / Edit、Account / Access: Organizations, Identity Providers, and Groups / Read、Zone / Zone / Read。トークンはプロンプトに貼る（保存しない）。
+- Terraform で管理する（トンネル・DNS・GitHub でログイン・開いてよい人。コンテナ向け）：`ops/cloudflare/terraform/README.md`。
+  `setup-access.ps1` とは同じ Access のアプリを作るので、どちらか一方を使う。
 - 通信は Cloudflare を通る（TLS は Cloudflare で終わる）。データそのものはこの PC の `data/` にある。家族以外に使わせると AGPL のソース公開の義務がかかる。
 
 ## 15. 回答の依頼（招待リンク）

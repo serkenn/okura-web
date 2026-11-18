@@ -42,6 +42,7 @@ docker で `docker build` を使うときは `-f Containerfile` を付ける。
 | このコンピューターだけ（既定） | `compose.yaml` のまま。ポートは `127.0.0.1:8765` にだけ出る |
 | 家の LAN から | `ports` を `"8765:8765"` にして、`command: ["--allow-host", "192.168.x.x:8765"]`（ブラウザに打つアドレスとポート）。HTTP は暗号化されないので家の LAN の中だけで |
 | 手前の認証つきで公開 | `command: ["--public-host", "okura.example.com"]` と、`.work/proxy-auth.json` か `.work/cf-access.json` を `/opt/okura-web/.work/` に読み取り専用でマウント（README §14）。設定がない間は、公開の URL からのリクエストを全部 403 で断る |
+| Cloudflare トンネルで公開（GitHub でログイン） | `compose.cloudflare.yaml` を重ねる。Cloudflare 側の設定とファイルは Terraform が作る（`ops/cloudflare/terraform/README.md`） |
 
 コンテナの中では `0.0.0.0` で待ち受ける（`OKURA_WEB_HOST`）。外に出す範囲を決めるのは、公開するポートの側。
 起動のときに「127.0.0.1 以外で待ち受けている」の注意が出るのはこのため。Host のヘッダーの検査（`--allow-host`）はコンテナでも同じに効く。

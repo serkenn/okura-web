@@ -1,0 +1,7 @@
+# 状態のファイルには秘密（トンネルのトークン・GitHub の Client secret）が入る。git に入れない
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+*.auto.tfvars
+crash.log
